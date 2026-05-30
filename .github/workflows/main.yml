@@ -1,9 +1,9 @@
 name: Sync Releases and Tags
 on:
-  workflow_dispatch: # تشغيل يدوي بضغطة زر
+  workflow_dispatch: # تشغيل يدوي بضغطة زر من تبويب Actions
 
 permissions:
-  contents: write # تفعيل صلاحية الكتابة والرفع
+  contents: write # تفعيل صلاحية كتابة ورفع الملفات لمستودعك
 
 jobs:
   sync:
@@ -17,7 +17,7 @@ jobs:
       - name: Sync Tags and Releases
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPSTREAM_REPO: 'اhttps://github.com/deepinsight/insightface/releases'
+          UPSTREAM_REPO: 'deepinsight/insightface'
         run: |
           # 1. ربط وجلب التاجات من المستودع الأصلي
           git remote add upstream https://github.com
