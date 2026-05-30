@@ -6,8 +6,9 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch and Sync Releases
-        uses: kittaakos/sync-releases-action@v1
+      - name: Copy Releases From Upstream
+        uses: aeon-php/github-release-copy-action@v1
         with:
-          from: 'https://github.com/deepinsight/insightface/releases'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          source_repository: 'https://github.com/deepinsight/insightface/releases'
+          target_repository: '${{ github.repository }}'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
