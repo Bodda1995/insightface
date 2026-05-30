@@ -1,48 +1,44 @@
 name: Sync Releases and Tags
 on:
-  workflow_dispatch: # تشغيل يدوي بضغطة زر من تبويب Actions
+  workflow_dispatch: # تشغيل يدوي بضغطة زر
 
 permissions:
-  contents: write # تفعيل صلاحية كتابة ورفع الملفات لمستودعك
+  contents: write # تفعيل صلاحية رفع الملفات لمستودعك
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Sync Tags and Releases
+      - name: Sync Releases using GitHub CLI
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. ربط وجلب التاجات من المستودع الأصلي مباشرة
-          git remote add upstream https://github.com
-          git fetch upstream --tags
-          git push origin --tags
-
-          # 2. استخدام أداة GitHub الرسمية لجلب ملفات الريليز ونسخها
-          echo "جاري جلب نسخ الـ Releases والملفات المرفقة..."
+          echo "جاري الاتصال بمستودع deepinsight/insightface..."
           
-          # جلب قائمة بكل الـ Releases من المشروع الأصلي
+          # 1. جلب قائمة كل الـ Releases من المشروع الأصلي عبر الـ API الرسمي
           releases=$(gh api repos/deepinsight/insightface/releases --jq '.[] | .tag_name')
 
+          # 2. حلقة تكرارية لنسخ الملفات لكل وسم
           for tag in $releases; do
-            echo "نسخ الريليز الخاص بالوسم: $tag"
+            echo "------------------------------------------------"
+            echo "جاري معالجة ونسخ الوسم: $tag"
             
-            # تحميل الملفات المرفقة بالوسم من المستودع الأصلي إلى مجلد مؤقت
+            # إنشاء مجلد مؤقت نظيف لكل وسم
             mkdir -p ./downloads
+            
+            # تحميل ملفات الـ Assets الخاصة بالوسم من المستودع الأصلي
             gh release download $tag -R deepinsight/insightface -D ./downloads --pattern "*" || true
             
-            # إنشاء الريليز داخل مستودعك ورفع الملفات المحملة إليه
+            # إنشاء الـ Release داخل مستودعك ورفع الملفات إليه مباشرة
             if [ "$(ls -A ./downloads)" ]; then
-              gh release create $tag ./downloads/* -t "$tag" -n "نسخة احتياطية آمنة للوسم $tag" --repo ${{ github.repository }} || true
+              echo "جاري رفع الملفات المرفقة للوسم $tag إلى مستودعك الخاص..."
+              gh release create $tag ./downloads/* -t "$tag" -n "نسخة احتياطية آمنة للموديلات والملفات الخاصة بالوسم $tag" --repo ${{ github.repository }} || true
             else
+              echo "الوسم $tag لا يحتوي على ملفات مرفقة، يتم إنشائه كـ Tag فقط..."
               gh release create $tag -t "$tag" -n "نسخة احتياطية آمنة للوسم $tag" --repo ${{ github.repository }} || true
             fi
             
-            # تنظيف المجلد المؤقت للوسم التالي
+            # مسح المجلد المؤقت للانتقال للوسم التالي
             rm -rf ./downloads
           done
+          echo "تمت عملية النسخ والحفظ بنجاح تام! ✔️"
