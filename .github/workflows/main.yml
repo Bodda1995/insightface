@@ -1,0 +1,13 @@
+name: Sync Releases and Tags
+on:
+  workflow_dispatch: # يتيح لك تشغيل الأداة يدوياً بضغطة زر
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch and Sync Releases
+        uses: kittaakos/sync-releases-action@v1
+        with:
+          from: 'https://github.com/deepinsight/insightface/releases'
+          token: ${{ secrets.GITHUB_TOKEN }}
