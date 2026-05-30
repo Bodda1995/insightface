@@ -1,14 +1,49 @@
 name: Sync Releases and Tags
 on:
-  workflow_dispatch: # يتيح لك تشغيل الأداة يدوياً بضغطة زر
+  workflow_dispatch: # تشغيل يدوي بضغطة زر
+
+permissions:
+  contents: write # تفعيل صلاحية الكتابة والرفع
 
 jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Copy Releases From Upstream
-        uses: aeon-php/github-release-copy-action@v1
+      - name: Checkout Code
+        uses: actions/checkout@v4
         with:
-          source_repository: 'https://github.com/deepinsight/insightface/releases'
-          target_repository: '${{ github.repository }}'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Sync Tags and Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_REPO: 'اhttps://github.com/deepinsight/insightface/releases'
+        run: |
+          # 1. ربط وجلب التاجات من المستودع الأصلي
+          git remote add upstream https://github.com
+          git fetch upstream --tags
+          git push origin --tags
+
+          # 2. استخدام أداة GitHub الرسمية لجلب ملفات الريليز ونسخها
+          echo "جاري جلب نسخ الـ Releases والملفات المرفقة..."
+          
+          # جلب قائمة بكل الـ Releases من المشروع الأصلي
+          releases=$(gh api repos/$UPSTREAM_REPO/releases --jq '.[] | .tag_name')
+
+          for tag in $releases; do
+            echo "نسخ الريليز الخاص بالوسم: $tag"
+            
+            # تحميل الملفات المرفقة بالوسم من المستودع الأصلي إلى مجلد مؤقت
+            mkdir -p ./downloads
+            gh release download $tag -R $UPSTREAM_REPO -D ./downloads --pattern "*" || true
+            
+            # إنشاء الريليز داخل مستودعك ورفع الملفات المحملة إليه
+            if [ "$(ls -A ./downloads)" ]; then
+              gh release create $tag ./downloads/* -t "$tag" -n "نسخة احتياطية آمنة للوسم $tag" --repo ${{ github.repository }} || true
+            else
+              gh release create $tag -t "$tag" -n "نسخة احتياطية آمنة للوسم $tag" --repo ${{ github.repository }} || true
+            fi
+            
+            # تنظيف المجلد المؤقت للوسم التالي
+            rm -rf ./downloads
+          done
