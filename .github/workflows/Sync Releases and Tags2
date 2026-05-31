@@ -1,0 +1,42 @@
+name: Sync Releases and Tags
+on:
+  workflow_dispatch: # تشغيل يدوي بضغطة زر
+
+permissions:
+  contents: write # تفعيل صلاحية رفع الملفات لمستودعك
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sync Releases using GitHub CLI
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # 💡 ضع هنا مسار أي مستودع تريد نسخه في المستقبل (اسم الحساب/اسم المستودع)
+          TARGET_PROJECT: 'deepinsight/insightface'
+        run: |
+          echo "جاري الاتصال بمستودع $TARGET_PROJECT..."
+          
+          # 1. جلب قائمة كل الـ Releases من المشروع المحدود
+          releases=$(gh api repos/$TARGET_PROJECT/releases --jq '.[] | .tag_name')
+
+          # 2. حلقة تكرارية لنسخ الملفات لكل وسم
+          for tag in $releases; do
+            echo "------------------------------------------------"
+            echo "جاري معالجة ونسخ الوسم: $tag"
+            
+            mkdir -p ./downloads
+            
+            # تحميل ملفات الـ Assets الخاصة بالوسم من المستودع المحدود
+            gh release download $tag -R $TARGET_PROJECT -D ./downloads --pattern "*" || true
+            
+            # إنشاء الـ Release داخل مستودعك ورفع الملفات إليه
+            if [ "$(ls -A ./downloads)" ]; then
+              gh release create $tag ./downloads/* -t "$tag" -n "نسخة احتياطية آمنة للموديلات والملفات الخاصة بالوسم $tag" --repo ${{ github.repository }} || true
+            else
+              gh release create $tag -t "$tag" -n "نسخة احتياطية آمنة للوسم $tag" --repo ${{ github.repository }} || true
+            fi
+            
+            rm -rf ./downloads
+          done
+          echo "تمت عملية النسخ والحفظ بنجاح تام! ✔️"
